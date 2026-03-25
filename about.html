@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AqlliDaftar AI</title>
+
+<style>
+body {
+  margin:0;
+  font-family:'Segoe UI';
+  display:flex;
+  background:linear-gradient(135deg,#e6f4ea,#d1fae5);
+}
+
+.sidebar {
+  width:220px;
+  background:#064e3b;
+  color:white;
+  padding:20px;
+}
+
+.main { flex:1; padding:20px; }
+
+.cards {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.card {
+  flex:1;
+  padding:15px;
+  border-radius:12px;
+  color:white;
+}
+
+.kirim{background:#16a34a;}
+.chiqim{background:#dc2626;}
+.qarz{background:#f59e0b;}
+.foyda{background:#065f46;}
+
+button {
+  padding:10px;
+  margin:5px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.add{background:#16a34a;color:white;}
+.voice{background:#065f46;color:white;}
+.reset{background:red;color:white;}
+
+.search{padding:10px;width:200px;}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+  margin-top:10px;
+}
+
+th{
+  background:#16a34a;
+  color:white;
+}
+
+td,th{
+  padding:10px;
+  border:1px solid #eee;
+  text-align:center;
+}
+
+.del{
+  background:red;
+  color:white;
+}
+
+.debtBtn{
+  background:#f59e0b;
+  color:white;
+}
+
+h2{color:#065f46;}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<h2>🌿 AqlliDaftar AI</h2>
+</div>
+
+<div class="main">
+
+<!-- CARDS -->
+<div class="cards">
+  <div class="card kirim">Kirim: <span id="kirim">0</span></div>
+  <div class="card chiqim">Chiqim: <span id="chiqim">0</span></div>
+  <div class="card qarz">Qarz: <span id="qarz">0</span></div>
+  <div class="card foyda">Foyda: <span id="foyda">0</span></div>
+</div>
+
+<!-- CONTROLS -->
+<input class="search" placeholder="Qidiruv..." oninput="render()">
+<button class="add" onclick="addData()">+ Qo‘shish</button>
+<button class="voice" onclick="voice()">🎤</button>
+<button class="reset" onclick="resetAll()">♻️</button>
+<button class="debtBtn" onclick="addDebtManual()">💰 Qarz qo‘shish</button>
+
+<!-- TRANSAKSIYA -->
+<h2>Transaksiyalar</h2>
+<table>
+<thead>
+<tr>
+<th>Nomi</th>
+<th>Turi</th>
+<th>Summa</th>
+<th>❌</th>
+</tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+
+<!-- QARZ -->
+<h2>Qarzlar ro‘yxati</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Kimdan</th>
+<th>Summa</th>
+<th>❌</th>
+</tr>
+</thead>
+<tbody id="debtTable"></tbody>
+</table>
+
+<h3>Jami qarz: <span id="totalDebt">0</span></h3>
+
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("data")) || [];
+let debts = JSON.parse(localStorage.getItem("debts")) || [];
+
+function save(){
+ localStorage.setItem("data",JSON.stringify(data));
+ localStorage.setItem("debts",JSON.stringify(debts));
+}
+
+/* ===== TRANSAKSIYA RENDER ===== */
+function render(){
+ let q = document.querySelector(".search").value.toLowerCase();
+ let table=document.getElementById("table");
+ table.innerHTML="";
+
+ let kirim=0, chiqim=0;
+
+ data.forEach((item,i)=>{
+  if(!item.name.toLowerCase().includes(q)) return;
+
+  let tr=document.createElement("tr");
+  tr.innerHTML=`
+  <td>${item.name}</td>
+  <td>${item.type}</td>
+  <td>${item.amount}</td>
+  <td><button class="del" onclick="del(${i})">X</button></td>
+  `;
+  table.appendChild(tr);
+
+  if(item.type=="kirim") kirim+=item.amount;
+  if(item.type=="chiqim") chiqim+=item.amount;
+ });
+
+ let qarzTotal = debts.reduce((s,d)=>s+d.amount,0);
+
+ document.getElementById("kirim").innerText=kirim;
+ document.getElementById("chiqim").innerText=chiqim;
+ document.getElementById("qarz").innerText=qarzTotal;
+
+ let foyda = kirim - chiqim;
+ document.getElementById("foyda").innerText=foyda;
+}
+
+/* ===== QARZ RENDER ===== */
+function renderDebts(){
+ let tbody=document.getElementById("debtTable");
+ tbody.innerHTML="";
+
+ let total=0;
+
+ debts.forEach((d,i)=>{
+  total+=d.amount;
+
+  let tr=document.createElement("tr");
+  tr.innerHTML=`
+  <td>${i+1}</td>
+  <td>${d.name}</td>
+  <td>${d.amount}</td>
+  <td><button class="del" onclick="deleteDebt(${i})">X</button></td>
+  `;
+  tbody.appendChild(tr);
+ });
+
+ document.getElementById("totalDebt").innerText=total;
+}
+
+/* ===== ADD ===== */
+function addData(){
+ let name=prompt("Nomi:");
+ let amount=+prompt("Summa:");
+ let type=prompt("kirim/chiqim");
+
+ if(!name||!amount||!type) return;
+
+ data.push({name,amount,type});
+ save();
+ render();
+}
+
+function addDebtManual(){
+ let name=prompt("Kimdan qarz:");
+ let amount=+prompt("Summa:");
+
+ if(!name||!amount) return;
+
+ debts.push({name,amount});
+ save();
+ renderDebts();
+ render();
+}
+
+/* ===== DELETE ===== */
+function del(i){
+ data.splice(i,1);
+ save();
+ render();
+}
+
+function deleteDebt(i){
+ debts.splice(i,1);
+ save();
+ renderDebts();
+ render();
+}
+
+/* ===== RESET ===== */
+function resetAll(){
+ if(confirm("Hammasini o‘chirasizmi?")){
+  data=[];
+  debts=[];
+  save();
+  render();
+  renderDebts();
+ }
+}
+
+/* ===== VOICE ===== */
+function voice(){
+ let r=new webkitSpeechRecognition();
+ r.lang="uz-UZ";
+ r.start();
+
+ r.onresult=(e)=>{
+  let text=e.results[0][0].transcript;
+  parse(text);
+ };
+}
+
+/* ===== AI ===== */
+function parse(t){
+ t=t.toLowerCase();
+
+ let type="chiqim";
+ if(t.includes("kirim")) type="kirim";
+ if(t.includes("qarz")) type="qarz";
+
+ let amount=(t.match(/\d+/)||[0])[0];
+ amount=Number(amount);
+
+ let name=t.replace(/\d+/g,'').replace(type,'');
+
+ if(type=="qarz"){
+  debts.push({name,amount});
+ }else{
+  data.push({name,amount,type});
+ }
+
+ save();
+ render();
+ renderDebts();
+}
+
+/* ===== INIT ===== */
+render();
+renderDebts();
+</script>
+
+</body>
+</html>
